@@ -3,7 +3,7 @@ import os
 
 import aws_cdk as cdk
 
-from chat with pdf.chat with pdf_stack import ChatWithPdfStack
+from chat_with_pdf.chat_with_pdf_stack import ChatWithPdfStack
 
 
 app = cdk.App()
