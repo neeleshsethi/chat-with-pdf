@@ -3,20 +3,23 @@ from aws_cdk import (
     Stack,
     # aws_sqs as sqs,
     aws_s3 as s3,
-    aws_opensearchserverless as opensearch,
+    aws_opensearchserverless as opensearchserverless,
     aws_iam as iam,
     aws_secretsmanager as secretsmanager,
     CfnOutput,
     RemovalPolicy,
     App,
+    Aws,
+    
+    
 
     
 
 
 )
 import aws_cdk as core
-
-
+import hashlib
+import uuid
 import random
 import string
 from constructs import Construct
@@ -26,13 +29,7 @@ class ChatWithPdfStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # The code that defines your stack goes here
 
-        # example resource
-        # queue = sqs.Queue(
-        #     self, "ChatWithPdfQueue",
-        #     visibility_timeout=Duration.seconds(300),
-        # )
         
         base_name = "chat-with-pdf-collection"  # Ensure base name is compliant with the pattern and length
         suffix_length = 32 - len(base_name) - 1  # Calculate the maximum length of the suffix
@@ -43,13 +40,15 @@ class ChatWithPdfStack(Stack):
         unique_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=suffix_length))
         collection_name = f"{base_name}-{unique_suffix}"
 
-# Ensure the final name does not exceed 32 characters
-        if len(collection_name) > 32:
-            raise ValueError("Generated collection name exceeds the maximum length of 32 characters.")
-
         print(collection_name)  # For debugging purposes
+           # Define the index name
+        index_name = "kb-docs"
 
         bucket_name = f"{base_name}-bucket-{unique_suffix}"
+         # Create a unique string to create unique resource names
+        hash_base_string = (self.account + self.region)
+        hash_base_string = hash_base_string.encode("utf8")   
+        
         pdf_bucket = s3.Bucket(
             self, 
             "PDFStorageBucket",
@@ -78,14 +77,64 @@ class ChatWithPdfStack(Stack):
 
      
         bedrock_execution_role.add_to_policy(s3_policy)
+        
+        
+        # Create a bedrock knowledgebase role. Creating it here so we can reference it in the access policy for the opensearch serverless collection
+        bedrock_kb_role = iam.Role(self, 'bedrock-kb-role',
+            role_name=("bedrock-kb-role-" + str(hashlib.sha384(hash_base_string).hexdigest())[:15]).lower(),
+            assumed_by=iam.ServicePrincipal('bedrock.amazonaws.com'),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonBedrockFullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonOpenSearchServiceFullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonS3FullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('CloudWatchLogsFullAccess'),
+            ],
+        )
+        
+        
+        # Add inline permissions to the bedrock knowledgebase execution role      
+        bedrock_kb_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=["aoss:APIAccessAll"],
+                resources=["*"],
+            )
+        )
+        
+        bedrock_kb_role_arn = bedrock_kb_role.role_arn
+        bedrock_role_arn = bedrock_execution_role.role_arn
 
 
         
-        opensearch_collection = opensearch.CfnCollection(self, "OpenSearchCollection",
-            name=f"chat-with-pdf-collection",
-           type="SEARCH"
+        opensearch_serverless_encryption_policy = opensearchserverless.CfnSecurityPolicy(self, "OpenSearchServerlessEncryptionPolicy",
+            name="encryption-policy",
+            policy="{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"]}],\"AWSOwnedKey\":true}",
+            type="encryption",
+            description="the encryption policy for the opensearch serverless collection"
+        )
+        
+        opensearch_serverless_network_policy = opensearchserverless.CfnSecurityPolicy(self, "OpenSearchServerlessNetworkPolicy",
+            name="network-policy",
+            policy="[{\"Description\":\"Public access for collection\",\"Rules\":[{\"ResourceType\":\"dashboard\",\"Resource\":[\"collection/*\"]},{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"]}],\"AllowFromPublic\":true}]",
+            type="network",
+            description="the network policy for the opensearch serverless collection"
+        )
+        
+        opensearch_serverless_access_policy = opensearchserverless.CfnAccessPolicy(self, "OpenSearchServerlessAccessPolicy",
+            name=f"data-policy-" + str(uuid.uuid4())[-6:],
+            policy=f"[{{\"Description\":\"Access for bedrock\",\"Rules\":[{{\"ResourceType\":\"index\",\"Resource\":[\"index/*/*\"],\"Permission\":[\"aoss:*\"]}},{{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"],\"Permission\":[\"aoss:*\"]}}],\"Principal\":[\"{bedrock_role_arn}\",\"{bedrock_kb_role_arn}\"]}}]",
+            type="data",
+            description="the data access policy for the opensearch serverless collection"
         )
 
+
+        opensearch_collection = opensearchserverless.CfnCollection(self, "OpenSearchCollection",
+            name=f"chat-with-pdf-collection",
+            type="SEARCH"
+        ) 
+        
+        opensearch_collection.add_dependency(opensearch_serverless_network_policy)
+        opensearch_collection.add_dependency(opensearch_serverless_access_policy)
       
         opensearch_policy = iam.PolicyStatement(
             actions=["aoss:APIAccessAll"],
@@ -103,34 +152,6 @@ class ChatWithPdfStack(Stack):
         )
         bedrock_execution_role.add_to_policy(foundation_model_policy)
 
-
-        
-
-        
-        # Create OpenSearch Serverless access policy
-        
-
-        encryption_policy = opensearch.CfnSecurityPolicy(self, "EncryptionPolicy",
-            name=f"bedrock-sample-rag-sp-{unique_suffix}",
-            type="encryption",
-            policy="{\"Rules\":[{\"Resource\":[\"collection/" + opensearch_collection.name + "\"],\"ResourceType\":\"collection\"}],\"AWSOwnedKey\":true}"
-        )
-
-        network_policy = opensearch.CfnSecurityPolicy(self, "NetworkPolicy",
-            name=f"bedrock-sample-rag-np-{unique_suffix}",
-            type="network",
-            policy="[{\"Rules\":[{\"Resource\":[\"collection/" + opensearch_collection.name + "\"],\"ResourceType\":\"collection\"}],\"AllowFromPublic\":true}]"
-        )
-
-        access_policy = opensearch.CfnAccessPolicy(self, "AccessPolicy",
-            name=f"bedrock-sample-rag-ap-{unique_suffix}",
-            type="data",
-            policy="[{\"Rules\":[{\"Resource\":[\"collection/" + opensearch_collection.name + "\"],\"Permission\":[\"aoss:CreateCollectionItems\",\"aoss:DeleteCollectionItems\",\"aoss:UpdateCollectionItems\",\"aoss:DescribeCollectionItems\"],\"ResourceType\":\"collection\"},{\"Resource\":[\"index/" + opensearch_collection.name + "/*\"],\"Permission\":[\"aoss:CreateIndex\",\"aoss:DeleteIndex\",\"aoss:UpdateIndex\",\"aoss:DescribeIndex\",\"aoss:ReadDocument\",\"aoss:WriteDocument\"],\"ResourceType\":\"index\"}],\"Principal\":[\"" + self.account + "\",\"" + bedrock_execution_role.role_arn + "\"],\"Description\":\"Easy data policy\"}]"
-        )
-
-
-
-        
 
         # Output the bucket name and role ARN for reference
         core.CfnOutput(self, "BucketName", value=pdf_bucket.bucket_name)
