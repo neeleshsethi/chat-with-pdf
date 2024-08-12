@@ -1,0 +1,4 @@
+{
+    "BucketName": "chat-with-pdf-collection-bucket-f3ip0sh",
+    "BedrockExecutionRoleArn": "arn:aws:iam::471112919332:role/AmazonBedrockExecutionRoleForKnowledgeBase_f3ip0sh"
+}
