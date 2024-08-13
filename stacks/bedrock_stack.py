@@ -55,7 +55,7 @@ class BedrockStack(Stack):
             self, "BedrockExecutionRole",
             assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
             description="Role for Bedrock to access S3, OpenSearch, and other resources",
-            role_name=f"AmazonBedrockExecutionRoleForKnowledgeBase_{unique_suffix}",
+            role_name=f"AmazonBedrockExecutionRoleForKnowledgeBase_{hash_base_string}_{hash_base_string}",
             max_session_duration=core.Duration.hours(1),
         )
 
