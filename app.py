@@ -3,11 +3,11 @@ import os
 
 import aws_cdk as cdk
 
-from chat_with_pdf.chat_with_pdf_stack import ChatWithPdfStack
+from stacks.aoss_stack import AossStack
 
 
 app = cdk.App()
-ChatWithPdfStack(app, "ChatWithPdfStack",
+AossStack(app, "ChatWithPdfStack",
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,
     # but a single synthesized template can be deployed anywhere.
