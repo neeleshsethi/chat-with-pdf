@@ -89,7 +89,6 @@ class AossStack(Stack):
         
 
   
-        core.CfnOutput(self, "OpenSearchCollectionArn", value=opensearch_serverless_collection.attr_arn)
 
 
 
