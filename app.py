@@ -5,42 +5,64 @@ import aws_cdk as cdk
 
 from stacks.aoss_stack import AossStack
 from stacks.bedrock_stack import BedrockStack
+from stacks.data_stack import DataFoundationStack
+from stacks.kb_stack import KnowledgeBaseStack
+
 
 app = cdk.App()
-AossStack(app, "ChatwithPDFAoss",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
+dict1 = {
+    "region": 'us-east-1',
+    "account_id": '117134819170'
+}
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
 
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
 
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+stack1 = DataFoundationStack(app, "DataStack",
+            env=cdk.Environment(account=dict1['account_id'], region=dict1['region']),
+            description="Data foundations for the bedrock agent", 
+            termination_protection=False, 
+            tags={"project":"bedrock-agents"},
+)
 
-BedrockStack(app, "ChatwithPDFBedrock",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
+stack3 = BedrockStack(app, "BedrockAgentStack",
+            env=cdk.Environment(account=dict1['account_id'], region=dict1['region']),
+            description="Bedrock agent resources", 
+            termination_protection=False, 
+            tags={"project":"bedrock-agents"},
+            dict1=dict1,
+         
+)
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+stack4 = AossStack(app, "AossStack",
+            env=cdk.Environment(account=dict1['account_id'], region=dict1['region']),
+            description="Opensearch Serverless resources", 
+            termination_protection=False, 
+            tags={"project":"bedrock-agents"},
+            dict1=dict1,
+         
+)
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
+stack5 = KnowledgeBaseStack(app, "KnowledgebaseStack",
+            env=cdk.Environment(account=dict1['account_id'], region=dict1['region']),
+            description="Bedrock knowledgebase resources", 
+            termination_protection=False, 
+            tags={"project":"bedrock-agents"},
+            dict1=dict1,
+           
+)
 
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
+stack3.add_dependency(stack1)
 
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+stack4.add_dependency(stack3)
+stack5.add_dependency(stack4)
+cdk.Tags.of(stack1).add(key="owner",value="acs")
+
+cdk.Tags.of(stack3).add(key="owner",value="acs")
+cdk.Tags.of(stack4).add(key="owner",value="acs")
+cdk.Tags.of(stack5).add(key="owner",value="acs")
+
 
 app.synth()

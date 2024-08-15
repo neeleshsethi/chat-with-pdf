@@ -25,6 +25,7 @@ bucket_name = 'test'
 
 
 class KnowledgeBaseOperations:
+    
     def create_vector_index(self, collection_name, vector_index_name):
         auth = AWSV4SignerAuth(credentials, session.region_name, SERVICE_NAME)
         ## Creating OpenSearch Client
@@ -60,22 +61,8 @@ class KnowledgeBaseOperations:
 
         logger.info(f"Index Creation Response: {response}")
 
-    def upload_document():
-         """
-        Method to upload the document into S3 for Knowledge Source to consume
-        """
-        # Create S3 client
-         s3_client = session.client("s3")
-         for root, dirs, files in os.walk(DATA_DIR):
-            for file in files:
-                s3_client.upload_file(os.path.join(root, file), bucket_name, file)
-                logger.info(
-                    f"Data gets uploaded for the file: {os.path.join(root, file)}"
-                )
 
-         logger.info("Data Upload operation is done.")
 
-    
 
     def create_knowledge_base(
         self,
@@ -282,5 +269,16 @@ class KnowledgeBaseOperations:
             logger.info(f"Vector Index {vector_index_name} is deleted.")
         except Exception as ex:
             logger.error(ex)
+            
+            
+    def upload_document(self):
+        s3_client = session.client("s3")
+        for root, dirs, files in os.walk(DATA_DIR):
+            for file in files:
+                s3_client.upload_file(os.path.join(root, file), bucket_name, file)
+                logger.info(
+                    f"Data gets uploaded for the file: {os.path.join(root, file)}"
+                )
+        logger.info("Data Upload operation is done.")
     
     

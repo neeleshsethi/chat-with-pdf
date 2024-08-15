@@ -23,11 +23,12 @@ import hashlib
 import uuid
 import random
 import string
+import json
 from constructs import Construct
 
 class AossStack(Stack):
 
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, dict1, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
 
@@ -54,16 +55,9 @@ class AossStack(Stack):
         )
 
         bedrock_role_arn = Fn.import_value("BedrockAgentRoleArn")
-        bedrock_kb_role_arn = Fn.import_value("bedrock_kb_role_arn")
 
         
-        opensearch_serverless_access_policy = opensearchserverless.CfnAccessPolicy(self, "OpenSearchServerlessAccessPolicy",
-            name=f"data-policy-" + str(uuid.uuid4())[-6:],
-            policy=f"[{{\"Description\":\"Access for bedrock\",\"Rules\":[{{\"ResourceType\":\"index\",\"Resource\":[\"index/*/*\"],\"Permission\":[\"aoss:*\"]}},{{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"],\"Permission\":[\"aoss:*\"]}}],\"Principal\":[\"{bedrock_role_arn}\",\"{bedrock_kb_role_arn}\"]}}]",
-            type="data",
-            description="the data access policy for the opensearch serverless collection"
-        )
-
+       
 
         opensearch_serverless_collection = opensearchserverless.CfnCollection(self, "OpenSearchServerless",
             name="bedrock-kb",
@@ -73,8 +67,9 @@ class AossStack(Stack):
         )
         
         opensearch_serverless_collection.add_dependency(opensearch_serverless_network_policy)
-        opensearch_serverless_collection.add_dependency(opensearch_serverless_access_policy)
-      
+        opensearch_serverless_collection.add_dependency(opensearch_serverless_encryption_policy)
+
+
         CfnOutput(self, "OpenSearchCollectionArn",
             value=opensearch_serverless_collection.attr_arn,
             export_name="OpenSearchCollectionArn"
@@ -84,6 +79,59 @@ class AossStack(Stack):
             value=opensearch_serverless_collection.attr_collection_endpoint,
             export_name="OpenSearchCollectionEndpoint"
         )
+        
+        
+        # Create a bedrock knowledgebase role. Creating it here so we can reference it in the access policy for the opensearch serverless collection
+
+        bedrock_kb_role = iam.Role(self, 'bedrock-kb-role',
+            role_name=("bedrock-kb-role-" + str(hashlib.sha384(hash_base_string).hexdigest())[:15]).lower(),
+            assumed_by=iam.ServicePrincipal('bedrock.amazonaws.com'),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonBedrockFullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonOpenSearchServiceFullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('AmazonS3FullAccess'),
+                iam.ManagedPolicy.from_aws_managed_policy_name('CloudWatchLogsFullAccess'),
+            ],
+        )
+        
+        
+        # Add inline permissions to the bedrock knowledgebase execution role      
+        bedrock_kb_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "aoss:APIAccessAll",
+                    "es:ESHttpPut", 
+                    "iam:CreateServiceLinkedRole", 
+                    "iam:PassRole", 
+                    "iam:ListUsers",
+                    "iam:ListRoles", 
+                    ],
+                resources=["*"],
+            )
+        )
+        
+        bedrock_kb_role_arn = bedrock_kb_role.role_arn
+        
+        CfnOutput(self, "BedrockKbRoleArn",
+            value=bedrock_kb_role_arn,
+            export_name="BedrockKbRoleArn"
+        )    
+
+        
+        
+        opensearch_serverless_access_policy = opensearchserverless.CfnAccessPolicy(self, "OpenSearchServerlessAccessPolicy",
+            name=f"data-policy-" + str(uuid.uuid4())[-6:],
+            policy=f"[{{\"Description\":\"Access for bedrock\",\"Rules\":[{{\"ResourceType\":\"index\",\"Resource\":[\"index/*/*\"],\"Permission\":[\"aoss:*\"]}},{{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"],\"Permission\":[\"aoss:*\"]}}],\"Principal\":[\"{bedrock_role_arn}\",\"{bedrock_kb_role_arn}\"]}}]",
+            type="data",
+            description="the data access policy for the opensearch serverless collection"
+        )
+        
+        opensearch_serverless_access_policy.add_dependency(opensearch_serverless_collection)        
+
+
+
+
 
 
         
