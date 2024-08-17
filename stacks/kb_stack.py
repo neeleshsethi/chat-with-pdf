@@ -1,4 +1,3 @@
-from distutils.log import Log
 from aws_cdk import (
     Duration,
     Stack,
@@ -61,12 +60,19 @@ class KnowledgeBaseStack(Stack):
                 "owner": "saas"
                 }
         )
+        kb_id = bedrock_knowledge_base.ref
+
 
         CfnOutput(self, "BedrockKbName",
             value=bedrock_knowledge_base.name,
             export_name="BedrockKbName"
         )
-        
+
+        CfnOutput(self, "BedrockKbId",
+            value=kb_id,
+            export_name="BedrockKbId"
+)
+            
         
         
         kb_data_source = bedrock.CfnDataSource(self, "KbDataSource",

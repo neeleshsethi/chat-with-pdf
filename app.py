@@ -7,6 +7,7 @@ from stacks.aoss_stack import AossStack
 from stacks.bedrock_stack import BedrockStack
 from stacks.data_stack import DataFoundationStack
 from stacks.kb_stack import KnowledgeBaseStack
+from stacks.lambda_stack import LambdaStack
 
 
 app = cdk.App()
@@ -54,10 +55,21 @@ stack5 = KnowledgeBaseStack(app, "KnowledgebaseStack",
            
 )
 
+stack6 = LambdaStack(app, "LambdaStack",
+            env=cdk.Environment(account=dict1['account_id'], region=dict1['region']),
+            description="Lambda resources", 
+            termination_protection=False, 
+            tags={"project":"bedrock-agents"},
+            dict1=dict1,
+           
+)
+
+
 stack3.add_dependency(stack1)
 
 stack4.add_dependency(stack3)
 stack5.add_dependency(stack4)
+stack6.add_dependency(stack5)
 cdk.Tags.of(stack1).add(key="owner",value="acs")
 
 cdk.Tags.of(stack3).add(key="owner",value="acs")

@@ -11,7 +11,7 @@ from aws_cdk import (
     RemovalPolicy,
     App,
     Aws,
-    
+    aws_lambda as _lambda,
     
 
     
@@ -116,10 +116,56 @@ class AossStack(Stack):
         CfnOutput(self, "BedrockKbRoleArn",
             value=bedrock_kb_role_arn,
             export_name="BedrockKbRoleArn"
-        )    
+        ) 
+
+
+        # Define the Lambda function that creates a new index in the opensearch serverless collection
+
+        create_index_lambda = _lambda.Function( self,"Index", 
+                                                      runtime=_lambda.Runtime.PYTHON_3_12,
+            code=_lambda.Code.from_asset("lambda"),
+            handler="create_oss_index.handler",
+            timeout=core.Duration.seconds(60),
+             environment={
+                "COLLECTION_ENDPOINT": opensearch_serverless_collection.attr_collection_endpoint,
+                "INDEX_NAME": index_name,
+                "REGION": dict1['region'],
+            }
+
+        )
+     # Define IAM permission policy for the Lambda function. This function calls the OpenSearch Serverless API to create a new index in the collection and must have the "aoss" permissions. 
+
+        create_index_lambda_policy_statement = iam.PolicyStatement(
+                  effect=iam.Effect.ALLOW,
+                  actions=["aoss:CreateIndex",
+                           "es:ESHttpPut", 
+                            "es:*", 
+                            "iam:CreateServiceLinkedRole", 
+                            "iam:PassRole", 
+                            "iam:ListUsers",
+                            "iam:ListRoles", 
+                            "aoss:APIAccessAll",
+                            "aoss:*"
+                           ],
+                  resources=[opensearch_serverless_collection.attr_arn]
+
+        )
+       
+
+        create_index_lambda.role.add_to_principal_policy(create_index_lambda_policy_statement)
+
+                # Create a Lambda layer that contains the requests library, which we use to call the OpenSearch Serverless API
+
+
+        layer = _lambda.LayerVersion( self,  'py-lib-layer-for-index',
+                                     code=_lambda.Code.from_asset('assets/lambda_layer_with_py_deps.zip'),
+                                     compatible_runtimes=[_lambda.Runtime.PYTHON_3_12])
+        
+        create_index_lambda.add_layers(layer)   
 
         
-        
+             # Finally we can create a complete data access policy for the collection that also includes the lambda function that will create the index. The policy must be a string and the resource contains the collections it is applied to.
+
         opensearch_serverless_access_policy = opensearchserverless.CfnAccessPolicy(self, "OpenSearchServerlessAccessPolicy",
             name=f"data-policy-" + str(uuid.uuid4())[-6:],
             policy=f"[{{\"Description\":\"Access for bedrock\",\"Rules\":[{{\"ResourceType\":\"index\",\"Resource\":[\"index/*/*\"],\"Permission\":[\"aoss:*\"]}},{{\"ResourceType\":\"collection\",\"Resource\":[\"collection/*\"],\"Permission\":[\"aoss:*\"]}}],\"Principal\":[\"{bedrock_role_arn}\",\"{bedrock_kb_role_arn}\"]}}]",
@@ -127,7 +173,17 @@ class AossStack(Stack):
             description="the data access policy for the opensearch serverless collection"
         )
         
-        opensearch_serverless_access_policy.add_dependency(opensearch_serverless_collection)        
+        opensearch_serverless_access_policy.add_dependency(opensearch_serverless_collection)   
+
+        
+        
+
+
+    
+
+        
+                                
+    
 
 
 
