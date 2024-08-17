@@ -26,9 +26,8 @@ class LambdaStack(Stack):
 
         agent_invokation_lambda = _lambda.Function(
             self, "AgentInvocationLambda",
-            function_name="AgentInvocationLambda",
             code=_lambda.Code.from_asset("lambda"),
-            handler="agent_invocation.lambda_handler",
+            handler="agent_invocation.handler",
             runtime=_lambda.Runtime.PYTHON_3_12,
             timeout=Duration.seconds(60)
         )
