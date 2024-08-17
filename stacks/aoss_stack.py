@@ -12,6 +12,8 @@ from aws_cdk import (
     App,
     Aws,
     aws_lambda as _lambda,
+    custom_resources as cr,
+    Duration,
     
 
     
@@ -173,7 +175,47 @@ class AossStack(Stack):
             description="the data access policy for the opensearch serverless collection"
         )
         
-        opensearch_serverless_access_policy.add_dependency(opensearch_serverless_collection)   
+        opensearch_serverless_access_policy.add_dependency(opensearch_serverless_collection) 
+
+        aossLambdaParams = {
+                    "FunctionName": create_index_lambda.function_name,
+                    "InvocationType": "RequestResponse"
+                }
+        
+        # On creation of the stack, trigger the Lambda function we just defined 
+        trigger_lambda_cr = cr.AwsCustomResource(self, "IndexCreateCustomResource",
+            on_create=cr.AwsSdkCall(
+                service="Lambda",
+                action="invoke",
+                parameters=aossLambdaParams,
+                physical_resource_id=cr.PhysicalResourceId.of("Parameter.ARN")
+                ),
+            policy=cr.AwsCustomResourcePolicy.from_sdk_calls(
+                resources=cr.AwsCustomResourcePolicy.ANY_RESOURCE
+                ),
+            removal_policy = RemovalPolicy.DESTROY,
+            timeout=Duration.seconds(120)
+            )
+
+        # Define IAM permission policy for the custom resource    
+        trigger_lambda_cr.grant_principal.add_to_principal_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "lambda:*", 
+                "iam:CreateServiceLinkedRole", 
+                "iam:PassRole"
+            ],
+            resources=["*"],
+            )
+        )  
+        
+        # Only trigger the custom resource after the opensearch access policy has been applied to the collection    
+        trigger_lambda_cr.node.add_dependency(opensearch_serverless_access_policy)
+        trigger_lambda_cr.node.add_dependency(opensearch_serverless_collection)
+        
+
+
+
 
         
         
