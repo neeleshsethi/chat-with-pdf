@@ -125,7 +125,7 @@ class AossStack(Stack):
 
         create_index_lambda = _lambda.Function( self,"Index", 
                                                       runtime=_lambda.Runtime.PYTHON_3_12,
-            code=_lambda.Code.from_asset("lambda"),
+            code=_lambda.Code.from_asset("assets/lambda-index"),
             handler="create_oss_index.handler",
             timeout=core.Duration.seconds(60),
              environment={
