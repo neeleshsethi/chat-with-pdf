@@ -137,24 +137,22 @@ class AossStack(Stack):
         )
      # Define IAM permission policy for the Lambda function. This function calls the OpenSearch Serverless API to create a new index in the collection and must have the "aoss" permissions. 
 
-        create_index_lambda_policy_statement = iam.PolicyStatement(
-                  effect=iam.Effect.ALLOW,
-                  actions=["aoss:CreateIndex",
-                           "es:ESHttpPut", 
-                            "es:*", 
-                            "iam:CreateServiceLinkedRole", 
-                            "iam:PassRole", 
-                            "iam:ListUsers",
-                            "iam:ListRoles", 
-                            "aoss:APIAccessAll",
-                            "aoss:*"
-                           ],
-                  resources=[opensearch_serverless_collection.attr_arn]
+        create_index_lambda.role.add_to_principal_policy(iam.PolicyStatement(
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "es:ESHttpPut", 
+                "es:*", 
+                "iam:CreateServiceLinkedRole", 
+                "iam:PassRole", 
+                "iam:ListUsers",
+                "iam:ListRoles", 
+                "aoss:APIAccessAll",
+                "aoss:*"
+            ],
+            resources=["*"],
+        ))   
+        
 
-        )
-       
-
-        create_index_lambda.role.add_to_principal_policy(create_index_lambda_policy_statement)
 
                 # Create a Lambda layer that contains the requests library, which we use to call the OpenSearch Serverless API
 
