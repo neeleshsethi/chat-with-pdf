@@ -77,7 +77,7 @@ def handler(event, context):
                 raise Exception(f"Failed to create AOSS index - status: {response.status_code}")
         
         except Exception as e:
-            print('Retrying to create aoss index...')
+            print(f"Retrying to create aoss index...{e}")
             sleep(5)
             continue
         
