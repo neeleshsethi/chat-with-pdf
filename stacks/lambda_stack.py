@@ -41,7 +41,11 @@ class LambdaStack(Stack):
 
         agent_invokation_lambda_ps = iam.PolicyStatement(
             effect=iam.Effect.ALLOW,
-            actions=["bedrock:InvokeModel"],
+            actions=["bedrock:InvokeModel","cloudformation:ListExports",
+                                "bedrock:Retrieve",
+                                "bedrock:RetrieveAndGenerate"
+                     
+                     ],
             resources=["*"]
         )
 

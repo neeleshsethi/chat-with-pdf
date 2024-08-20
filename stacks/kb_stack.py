@@ -82,7 +82,8 @@ class KnowledgeBaseStack(Stack):
             data_source_configuration=bedrock.CfnDataSource.DataSourceConfigurationProperty(
                 s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
                     bucket_arn=kb_bucket_arn,
-                    inclusion_prefixes=["eaa-docs"],
+                    inclusion_prefixes=["amazonq-docs"],
+                 
                 ),
                 type="S3"
             ),
