@@ -20,7 +20,8 @@ awsauth = auth = AWSV4SignerAuth(credentials, region_name, service)
 
 def handler(event, context):
     # 1. Defining the request body for the index and field creation
-    host = os.environ["COLLECTION_ENDPOINT"]
+    host = os.environ["COLLECTION_ENDPOINT"].replace("https://", "")
+
     print(f"Collection Endpoint: " + host)
     index_name = os.environ["INDEX_NAME"]
     print(f"Index name: " + index_name)
@@ -56,8 +57,8 @@ def handler(event, context):
                 }
   
   
-    while True:
-        try:        
+
+    try:        
         
             oss_client = OpenSearch(
                         hosts=[{'host': host, 'port': 443}],
@@ -65,21 +66,34 @@ def handler(event, context):
                         use_ssl=True,
                         verify_certs=True,
                         connection_class=RequestsHttpConnection,
-                        timeout=300
+                        timeout=30
                     )
-# # It can take up to a minute for data access rules to be enforced
-            sleep(100)
+       
             response = oss_client.indices.create(index=index_name, body=json.dumps(body_json))
             print('\nCreating index:')
             print(response)
+            return {
+            'statusCode': 200,
+            'body': json.dumps({
+                'message': 'Index created successfully',
+                'index_name': index_name,
+                'response': response
+            }),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
 
-            
-        
-        except Exception as e:
-            print(f"Retrying to create aoss index...{e}")
-            sleep(5)
-            continue
-        
-        print(f"Index create SUCCESS - status: {response.text}")
-        break
+    except Exception as e:
+            print(f"Error trying to create aoss index...{e}")
+            return {
+            'statusCode': 500,
+            'body': json.dumps({
+                'message': 'Error creating index',
+                'error': e
+            }),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
