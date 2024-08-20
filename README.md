@@ -59,4 +59,9 @@ command.
 Enjoy!
 =======
 # chat-with-pdf
+
+Test code:
+{
+  "body": "{\"userPrompt\": \"What are capabilites of amazon q?\", \"sessionId\": \"session-12345\"}"
+}
 >>>>>>> origin/main
