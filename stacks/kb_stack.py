@@ -52,7 +52,7 @@ class KnowledgeBaseStack(Stack):
                     field_mapping = bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
                         metadata_field="metadataField",
                         text_field="textField",
-                        vector_field="vectorField"
+                        vector_field="vector"
                         )
                     ),
                 ),
