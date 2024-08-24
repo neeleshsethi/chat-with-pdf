@@ -77,7 +77,7 @@ class LambdaStack(Stack):
             memory_limit_mib=512,
             desired_count=1,
             task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
-                image=ecs.ContainerImage.from_asset("admin"),
+                image=ecs.ContainerImage.from_asset("Admin"),
                 container_port=8501,
                 environment={
                     "LAMBDA_FUNCTION_NAME": agent_invokation_lambda.function_name,
