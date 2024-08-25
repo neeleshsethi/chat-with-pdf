@@ -69,43 +69,37 @@ class LambdaStack(Stack):
             resources=["*"]
         ))
 
-        # Create Fargate Service
         fargate_service = ecs_patterns.ApplicationLoadBalancedFargateService(
-            self, "ChatbotService",
-            cluster=cluster,
-            cpu=256,
-            memory_limit_mib=512,
-            desired_count=1,
-            task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
-                image=ecs.ContainerImage.from_asset("Admin"),
-                container_port=8501,
-                environment={
-                    "LAMBDA_FUNCTION_NAME": agent_invokation_lambda.function_name,
-                }
-            ),
+        self, "ChatbotService",
+        cluster=cluster,
+        cpu=512,
+        memory_limit_mib=1024,
+        desired_count=1,
+        task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+            image=ecs.ContainerImage.from_asset("Admin"),
+            container_port=80,
+            environment={
+                "LAMBDA_FUNCTION_NAME": agent_invokation_lambda.function_name,
+            }
+        ),
+        health_check_grace_period=Duration.seconds(60),
+    )
+
+        fargate_service.target_group.configure_health_check(
+            path="/health",
+            healthy_http_codes="200",
+            interval=Duration.seconds(30),
+            timeout=Duration.seconds(5),
+            healthy_threshold_count=2,
+            unhealthy_threshold_count=3,
         )
 
         # Grant Fargate task permission to invoke Lambda
         agent_invokation_lambda.grant_invoke(fargate_service.task_definition.task_role)
 
-         # Create EC2 Instance
-        ec2_instance = ec2.Instance(
-            self, "TestInstance",
-            instance_type=ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
-            machine_image=ec2.AmazonLinuxImage(generation=ec2.AmazonLinuxGeneration.AMAZON_LINUX_2),
-            vpc=vpc,
-            vpc_subnets=ec2.SubnetSelection(subnet_type=ec2.SubnetType.PUBLIC),
-        )
+       
 
-        # Allow EC2 instance to access the Fargate service
-        fargate_service.load_balancer.connections.allow_from(
-            ec2_instance, ec2.Port.tcp(80), "Allow EC2 instance to access ALB"
-        )
-
-        # Output the EC2 instance public IP and the ALB DNS name
-        CfnOutput(self, "EC2InstancePublicIP",
-                  value=ec2_instance.instance_public_ip,
-                  description="Public IP address of the EC2 instance")
+  
         CfnOutput(self, "LoadBalancerDNS",
                   value=fargate_service.load_balancer.load_balancer_dns_name,
                   description="DNS name of the Application Load Balancer")
