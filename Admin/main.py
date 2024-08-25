@@ -102,7 +102,11 @@ async def chat(request: ChatRequest):
     
     return {"role": "assistant", "content": assistant_response}
 
-
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    # Here, you can add checks to verify the health of dependent services if needed
+    return {"status": "Health check passed", "region": region}
 
 # Custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
