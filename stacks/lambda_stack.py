@@ -105,3 +105,40 @@ class LambdaStack(Stack):
                   description="DNS name of the Application Load Balancer")
         
 
+        streamlit_fargate_service = ecs_patterns.ApplicationLoadBalancedFargateService(
+        self, "StreamlitService",
+        cluster=cluster,
+        cpu=512,
+        memory_limit_mib=1024,
+        desired_count=1,
+        task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
+            image=ecs.ContainerImage.from_asset("streamlit-app"),
+            container_port=80,
+            environment={
+                "LAMBDA_FUNCTION_NAME": agent_invokation_lambda.function_name,
+                "LOG_LEVEL": "INFO"
+            }
+        ),
+        health_check_grace_period=Duration.seconds(60),
+    )
+
+        streamlit_fargate_service.target_group.configure_health_check(
+            path="/health",
+            healthy_http_codes="200",
+            interval=Duration.seconds(30),
+            timeout=Duration.seconds(5),
+            healthy_threshold_count=2,
+            unhealthy_threshold_count=3,
+        )
+
+        # Grant Fargate task permission to invoke Lambda
+        agent_invokation_lambda.grant_invoke(streamlit_fargate_service.task_definition.task_role)
+
+       
+
+  
+        CfnOutput(self, "StreamlitLoadBalancerDNS",
+                  value=streamlit_fargate_service.load_balancer.load_balancer_dns_name,
+                  description="DNS name of the Application Load Balancer")
+        
+

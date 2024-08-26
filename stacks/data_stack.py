@@ -131,6 +131,14 @@ class DataFoundationStack(Stack):
         )
 
         kb_bucket.grant_read_write(iam.ServicePrincipal("bedrock.amazonaws.com"))
+
+        upload_docs = s3d.BucketDeployment(self, "KnowledgebaseDocs",
+            sources=[s3d.Source.asset("assets/data-set/")],
+            destination_bucket=kb_bucket,
+            destination_key_prefix="amazonq-docs/",
+            ephemeral_storage_size=Size.gibibytes(1),
+            memory_limit=1024,
+        )
         
         # Export the kb bucket bucket name
         CfnOutput(self, "KnowledgebaseBucketName",

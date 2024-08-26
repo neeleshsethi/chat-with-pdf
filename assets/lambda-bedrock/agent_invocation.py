@@ -27,7 +27,57 @@ def handler(event, context):
                 kb_id = export['Value']
                 break
 
-
+            """
+        
+                            {
+                        'citations': [
+                            {
+                                'generatedResponsePart': {
+                                    'textResponsePart': {
+                                        'span': {
+                                            'end': 123,
+                                            'start': 123
+                                        },
+                                        'text': 'string'
+                                    }
+                                },
+                                'retrievedReferences': [
+                                    {
+                                        'content': {
+                                            'text': 'string'
+                                        },
+                                        'location': {
+                                            'confluenceLocation': {
+                                                'url': 'string'
+                                            },
+                                            's3Location': {
+                                                'uri': 'string'
+                                            },
+                                            'salesforceLocation': {
+                                                'url': 'string'
+                                            },
+                                            'sharePointLocation': {
+                                                'url': 'string'
+                                            },
+                                            'type': 'S3'|'WEB'|'CONFLUENCE'|'SALESFORCE'|'SHAREPOINT',
+                                            'webLocation': {
+                                                'url': 'string'
+                                            }
+                                        },
+                                        'metadata': {
+                                            'string': {...}|[...]|123|123.4|'string'|True|None
+                                        }
+                                    },
+                                ]
+                            },
+                        ],
+                        'guardrailAction': 'INTERVENED'|'NONE',
+                        'output': {
+                            'text': 'string'
+                        },
+                        'sessionId': 'string'
+                    }
+        """
 
         response = bedrock_agent_runtime_client.retrieve_and_generate(
                 input={
@@ -42,10 +92,13 @@ def handler(event, context):
                 },
             )
         generated_text = response['output']['text']
+        sessionId = response['output']['sessionId']
+        
         return {
             "statusCode": 200,
             "body": json.dumps({
-                "response": generated_text
+                "response": generated_text,
+                "sessionId": sessionId
             })
         }
     

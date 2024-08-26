@@ -9,6 +9,10 @@ import logging
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from datetime import datetime
+import streamlit as st
+
+
 
 
 app = FastAPI()
@@ -26,7 +30,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     role: str
     content: str
-
+    sessionId: str 
 
 session = boto3.session.Session()
 region = session.region_name
@@ -68,7 +72,7 @@ def invoke_bedrock_lambda(user_prompt, session_id):
         )
         
         # Parse the response
-        result = json.loads(response['Payload'].read())
+        result = json.loads(response['Payload'].read().decode("utf-8"))
         return result
     
     except (ClientError, BotoCoreError) as e:
@@ -83,7 +87,7 @@ def invoke_bedrock_lambda(user_prompt, session_id):
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     user_message = request.prompt
-    session_id = request.sessionId
+    sessionId = request.sessionId
 
     if not user_message:
         return {"role": "assistant", "content": "No prompt provided"}
@@ -94,13 +98,14 @@ async def chat(request: ChatRequest):
     # Check if the Lambda response contains the generated text
     if 'response' in lambda_response['body']:
         assistant_response = json.loads(lambda_response['body'])['response']
+        session_id = json.loads(lambda_response['body'])['sessionId']
     else:
         assistant_response = "An error occurred while processing your request."
 
     # Append the assistant's response to the session messages
     request.messages.append({"role": "assistant", "content": assistant_response})
     
-    return {"role": "assistant", "content": assistant_response}
+    return {"role": "assistant", "content": assistant_response,"sessionId":sessionId}
 
 # Health check endpoint
 @app.get("/health")
@@ -118,4 +123,3 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "detail": exc.errors()
         }
     )
-
