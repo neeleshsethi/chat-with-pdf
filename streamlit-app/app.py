@@ -106,7 +106,7 @@ def show_message():
                 session_id = json.loads(lambda_response['body'])['sessionId']
             else:
                 assistant_response = "An error occurred while processing your request."
-            logger.debug(f"Output: {lambda_response}")
+            #logger.debug(f"Output: {lambda_response}")
             
           
             st.session_state.session_id = sessionId
