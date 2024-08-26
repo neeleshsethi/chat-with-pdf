@@ -2,6 +2,7 @@ from aws_cdk import (
     
   
     Duration,
+    Aws,
     Stack,
     CfnOutput,
     aws_lambda as _lambda,
@@ -113,7 +114,7 @@ class LambdaStack(Stack):
         desired_count=1,
         task_image_options=ecs_patterns.ApplicationLoadBalancedTaskImageOptions(
             image=ecs.ContainerImage.from_asset("streamlit-app"),
-            container_port=80,
+            container_port=8501,
             environment={
                 "LAMBDA_FUNCTION_NAME": agent_invokation_lambda.function_name,
                 "LOG_LEVEL": "INFO"
@@ -133,7 +134,13 @@ class LambdaStack(Stack):
 
         # Grant Fargate task permission to invoke Lambda
         agent_invokation_lambda.grant_invoke(streamlit_fargate_service.task_definition.task_role)
-
+        scaling = streamlit_fargate_service.service.auto_scale_task_count(max_capacity=3)
+        scaling.scale_on_cpu_utilization(
+            "CpuScaling",
+            target_utilization_percent=50,
+            scale_in_cooldown=Duration.seconds(60),
+            scale_out_cooldown=Duration.seconds(60),
+        )
        
 
   
