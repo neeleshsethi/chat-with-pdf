@@ -7,15 +7,17 @@ import json
 
 def handler(event, context):
     body = json.loads(event["body"])
+    print(f"body is {body}")
     query = body['userPrompt']
+    query = json.dumps(query)
     sessionId = body["sessionId"]
     boto3_session = boto3.Session()
     bedrock_agent_runtime_client = boto3_session.client('bedrock-agent-runtime', region_name=os.environ['AWS_REGION'])
     region_name = boto3_session.region_name
-    model_id = "anthropic.claude-3-sonnet-20240229-v1:0" 
+    model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0" 
     model_arn =  f'arn:aws:bedrock:{region_name}::foundation-model/{model_id}'
 
-    print(f"Session: {sessionId} as question {query}")
+    print(f"Question {query}")
 
     try:
         cfn_client = boto3.client('cloudformation')
@@ -91,8 +93,10 @@ def handler(event, context):
                     }
                 },
             )
+        print(f"Generated response is {response}")
         generated_text = response['output']['text']
-        sessionId = response['output']['sessionId']
+        sessionId = response.get('sessionId', sessionId)  # Use the original sessionId if not returned
+
         
         return {
             "statusCode": 200,

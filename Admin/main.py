@@ -54,12 +54,12 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-def invoke_bedrock_lambda(user_prompt, session_id):
+def invoke_bedrock_lambda(user_prompt, sessionId):
     # Prepare the payload
     payload = {
         'body': json.dumps({
             'userPrompt': user_prompt,
-            'sessionId': session_id
+            'sessionId': sessionId
         })
     }
     
@@ -93,7 +93,7 @@ async def chat(request: ChatRequest):
         return {"role": "assistant", "content": "No prompt provided"}
 
     # Call the Lambda function to get the response from AWS Bedrock
-    lambda_response = invoke_bedrock_lambda(user_prompt=user_message, session_id=session_id)
+    lambda_response = invoke_bedrock_lambda(user_prompt=user_message, sessionId=session_id)
 
     # Check if the Lambda response contains the generated text
     if 'response' in lambda_response['body']:

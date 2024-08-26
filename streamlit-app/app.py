@@ -10,6 +10,10 @@ logger.setLevel(Connections.log_level)
 lambda_client = Connections.lambda_client
 import os
 
+
+
+
+
 def invoke_bedrock_lambda(user_prompt, sessionId):
     # Prepare the payload
     payload = {
