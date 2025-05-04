@@ -15,7 +15,7 @@ app = cdk.App()
 
 dict1 = {
     "region": 'us-east-1',
-    "account_id": '117134819170'
+    "account_id": ''
 }
 
 
